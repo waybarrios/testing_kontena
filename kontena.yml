@@ -1,0 +1,14 @@
+web:
+  image: waybarrios/test_nginx
+  environment:
+    - KONTENA_LB_MODE=http
+    - KONTENA_LB_BALANCE=roundrobin
+    - KONTENA_LB_INTERNAL_PORT=80
+    - KONTENA_LB_VIRTUAL_HOSTS=worldmap.cientifi.co
+  links:
+    - internet_lb
+
+internet_lb:
+  image: kontena/lb:latest
+  ports:
+    - 80:80
