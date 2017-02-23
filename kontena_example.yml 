@@ -1,0 +1,38 @@
+stack: kontena/example-app
+version: 0.1.0
+variables:
+  mysql_root_pw:
+    type: string
+    from:
+      prompt: Enter a root password for MySQL or leave empty to auto generate
+      random_string: 16
+services:
+  loadbalancer:
+    image: kontena/lb:latest
+    ports:
+      - 80:80
+  app:
+    build: .
+    image: registry.kontena.local/example-app:latest
+    instances: 2
+    links:
+      - loadbalancer
+    environment:
+      - DB_URL=db
+      - KONTENA_LB_INTERNAL_PORT=80
+      - KONTENA_LB_VIRTUAL_HOSTS=www.my-app.com
+    deploy:
+      strategy: ha
+      wait_for_port: 80
+    hooks:
+      post_start:
+        - name: sleep
+          cmd: sleep 10
+          instances: *
+  db:
+    image: mysql:5.6
+    stateful: true
+    environment:
+      - MYSQL_ROOT_PASSWORD=${mysql_root_pw}
+    volumes:
+      - /var/lib/mysql
