@@ -1,24 +1,21 @@
-stack: wayner/example
+stack: wayner/brucer
+
 version: 0.1.0
+
+
 services:
-  loadbalancer:
-    image: kontena/lb:latest
-    ports:
-      - 80:80
-  app:
+  web:
     image: waybarrios/test_nginx
-    links:
-      - loadbalancer
     environment:
       - KONTENA_LB_MODE=http
       - KONTENA_LB_BALANCE=roundrobin
       - KONTENA_LB_INTERNAL_PORT=80
       - KONTENA_LB_VIRTUAL_HOSTS=brucer.cientifi.co
+    links:
+      - internet_lb
     deploy:
       strategy: ha
       wait_for_port: 80
-    hooks:
-      post_start:
-        - name: sleep
-          cmd: sleep 10
-          instances: *
+
+affinity:
+  - node==wild-bush-72 
