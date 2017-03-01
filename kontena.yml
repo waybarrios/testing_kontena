@@ -1,24 +1,65 @@
-stack: wayner/example
-version: 0.1.0
+stack: wayner/worldmap
+version: 0.1.1
 services:
+
   loadbalancer:
     image: kontena/lb:latest
     ports:
       - 80:80
-  app:
-    image: waybarrios/test_nginx
+  postgres:
+    image: terranodo/postgis
+  rabbitmq:
+     image: rabbitmq
+  elasticsearch:
+    image: elasticsearch
     links:
       - loadbalancer
     environment:
       - KONTENA_LB_MODE=http
-      - KONTENA_LB_BALANCE=roundrobin
-      - KONTENA_LB_INTERNAL_PORT=80
-      - KONTENA_LB_VIRTUAL_HOSTS=brucer.cientifi.co
-    deploy:
-      strategy: ha
-      wait_for_port: 80
-    hooks:
-      post_start:
-        - name: sleep
-          cmd: sleep 10
-          instances: *
+      - KONTENA_LB_INTERNAL_PORT=9200
+      - KONTENA_LB_VIRTUAL_PATH=/elastic
+      - KONTENA_LB_VIRTUAL_HOSTS=worldmap.cientifi.co
+
+  geoserver:
+   image: piensalabs/geoserver:konten
+   links:
+     - postgres
+     - loadbalancer
+   environment:
+     - DJANGO_URL=http://django:8000/
+     - GEOSERVER_PUBLIC_LOCATION=http://worldmap.cientifi.co/geoserver/
+     - GEOSERVER_LOCATION=http://geoserver:8080/geoserver/
+     - SITEURL=http://worldmap.cientifi.co/
+     - KONTENA_LB_MODE=http
+     - KONTENA_LB_INTERNAL_PORT=8080
+     - KONTENA_LB_VIRTUAL_PATH=/geoserver
+     - KONTENA_LB_VIRTUAL_HOSTS=worldmap.cientifi.co
+
+  django:
+    image: piensalabs/worldmap:docker
+    links:
+      - postgres
+      - elasticsearch
+      - rabbitmq
+      - loadbalancer
+      - geoserver
+    command: django-admin.py runserver 0.0.0.0:8000 --settings=worldmap.settings
+    environment:
+      - DATABASE_URL=postgis://postgres:postgres@postgres:5432/postgres
+      - DATASTORE_URL=postgis://postgres:postgres@postgres:5432/postgres
+      - BROKER_URL=amqp://guest:guest@rabbitmq:5672/
+      - DJANGO_SETTINGS_MODULE=worldmap.settings
+      - ALLOWED_HOSTS=['django', 'worldmap.cientifi.co']
+      - C_FORCE_ROOT=1
+      - DEBUG=True
+      - GEOSERVER_PUBLIC_LOCATION=http://worldmap.cientifi.co/geoserver/
+      - GEOSERVER_LOCATION=http://worldmap.cientifi.co/geoserver/
+      - GEOSERVER_BASE_URL=http://worldmap.cientifi.co/geoserver/
+      - SITEURL=http://worldmap.cientifi.co/
+      - GEONODE_CLIENT_LOCATION=/static/worldmap_client/
+      - KONTENA_LB_MODE=http
+      - KONTENA_LB_INTERNAL_PORT=8000
+      - KONTENA_LB_VIRTUAL_PATH=/
+      - KONTENA_LB_VIRTUAL_HOSTS=worldmap.cientifi.co
+
+

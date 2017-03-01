@@ -1,0 +1,35 @@
+stack: jorge/jorger
+
+version: 0.1.0
+
+services:
+  internet_lb:
+    image: kontena/lb:latest
+    ports:
+      - 80:80
+
+  postgres:
+    image: mdillon/postgis:9.5
+
+  elasticsearch:
+    image: elasticsearch:1.7
+    environment:
+      - KONTENA_LB_MODE=http
+      - KONTENA_LB_INTERNAL_PORT=9200
+      - KONTENA_LB_VIRTUAL_PATH=/elastic
+      - KONTENA_LB_VIRTUAL_HOSTS=jorger.cientifi.co
+    links:
+      - internet_lb
+
+  registry:
+    image: ninjalikeme/registry
+    environment:
+      - REGISTRY_SEARCH_URL=http://elasticsearch:9200/
+      - REGISTRY_DATABASE_URL=postgres://postgres:postgres@postgres:5432/postgres
+      - KONTENA_LB_MODE=http
+      - KONTENA_LB_INTERNAL_PORT=8000
+      - KONTENA_LB_VIRTUAL_PATH=/
+      - KONTENA_LB_VIRTUAL_HOSTS=jorger.cientifi.co
+    command: 'python registry.py runserver 0.0.0.0:8000'
+    links:
+      - internet_lb
